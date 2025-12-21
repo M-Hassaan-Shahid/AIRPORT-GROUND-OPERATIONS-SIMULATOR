@@ -1,0 +1,569 @@
+Summary:
+We are building a research-grade Python simulation engine for airport ground traffic. The engine models aircraft taxiing, queueing, and interactions on the airport surface using a discrete-time cellular automaton approach.
+Our
+role:
+Build the
+UI,
+infrastructure, orchestration, and mid-level domain logic.
+The research partner I’m currently working with
+will implement the core microscopic movement rules.
+We
+are responsible for making it easy to use, tune, and extend.
+Key principle:
+The backend is data-driven and parameter-driven. Every rule, rate, and behaviour is configurable via the
+‘
+params.py
+’
+hyperparameter system. The UI layer sends JSON; the backend interprets it without needing to touch code.
+Architecture Overview
+High Level Architecture:
+Dependencies:
+FRONT-END UI
+produces
+:
+layout.json
+(saved by Path Builder)
+produces:
+pa
+rams.json
+(from hyperparameter controls)
+consumes:
+results.json
+(from runner via metrics)
+calls:
+runner.run_simulation
+(
+layout_json
+,
+params_json
+) -&gt; results
+RUNNER.PY
+imports: LAYOUT, PARAMS, ROUTING, SPAWNING, CAPACITY, RULES, MODEL_CORE, METRICS
+LAYOUT.PY
+(foundation)
+depends on: standard library only
+PARAMS.PY
+(foundation)
+depends on: LAYOUT, standard library
+RULES.PY
+(mid-level)
+depends on: LAYOUT, PARAMS
+ROUTING.PY
+(mid-level)
+depends on: LAYOUT, PARAMS, RULES
+used by: SPAWNING, RUNNER
+SPAWNING.PY
+(mid-level)
+depends on: LAYOUT, PARAMS, CAPACITY, ROUTING
+called by: RUNNER
+CAPACITY.PY
+(mid-level)
+depends on: LAYOUT, PARAMS, RULES
+called by: RUNNER, SPAWNING, MODEL_CORE
+MODEL_CORE.PY
+(core)
+depends on: LAYOUT, PARAMS, RULES, CAPACITY
+called by: RUNNER each time step
+METRICS.PY
+(data collection)
+depends on: LAYOUT, standard library
+Module Levels:
+Level
+Modules
+Responsibility
+UI
+Home Screen, Path Builder, Simulation Visuals, Graphs
+JSON I/O, layout creation, parameter controls, plot rendering
+Top
+runner.py
+Orchestration; main loop; JSON API entry point
+Mid
+spawning.py, routing.py, capacity.py, rules.py
+Domain logic; parameter interpretation
+Mid-Low
+params.py
+Hyperparameter modes and evaluation utilities
+Low
+layout.py
+Graph I/O and representation
+Core
+model_core.py (Research Partner)
+CA state and one-step update
+Data
+metrics.py
+Logging and JSON plot data
+Front-End UI Overview:
+The UI will consist of 4 main areas:
+Home Screen:
+Ask the user to either:
+Load a saved path/layout, or
+Create a new path/layout.
+Show a list of saved layouts (by name), with options to select, rename, duplicate, or delete.
+When the user selects a layout or chooses to create a new one, navigate to the Path Builder.
+Path Builder Screen:
+Display a 2D canvas where the user can:
+Create nodes and edges representing runways, taxiways, aprons, hold points, and gates.
+Tag segments and nodes with their type (runway, taxiway, apron link, hold point, gate, rapid exit, etc.).
+Use tools such as:
+Straight-segment tool (draw straight edges between nodes).
+Optional curved-segment tool (for more natural taxiways).
+Node selection and editing (move nodes, change types).
+Use grid and angle snapping (e.g. snapping to a 10 m grid and fixed angle increments) so layouts are clean and consistent.
+Provide visual feedback:
+Colour-code edges by type (e.g. runway vs taxiway vs apron).
+Show icons or labels for gates, hold points, and runway ends.
+Save and manage layouts:
+Save the current layout as JSON following the layout.py schema.
+Load a previously saved layout.
+Delete unwanted layouts.
+The Path Builder will not run any simulations; it only creates layout JSONs that the backend can read.
+Simulation Screen (Visuals + Controls):
+Central canvas:
+Display the selected layout and show aircraft moving along paths when a simulation is running.
+Use simple shapes/markers for aircraft and clear visual indication of runways, taxiways, aprons and queues.
+Simulation controls:
+Buttons for Start, Pause, Resume, Stop, and Reset.
+A progress indicator (current simulation time / total duration).
+Optional speed control (e.g. 1x, 2x, 4x) for visual playback.
+Hyperparameter panel:
+Space for sliders, dropdowns and numeric inputs to configure:
+Spawn rates and traffic mode.
+Weather and wind settings.
+Speed and separation multipliers.
+Priority modes and capacity values.
+Provide clear indication which parameters can be:
+Edited before the run only, or
+Safely changed mid-run (these changes are sent to the backend as updates to the parameters object).
+Data flow:
+Before starting, the UI packs:
+The chosen layout JSON from the Path Builder or a saved file.
+The current hyperparameters into a params JSON matching the params.py schema.
+It then calls the backend entry point (e.g. run_simulation(layout_json, params_json)) and receives results as JSON for plots and summary statistics.
+Graphs and Results Screen (or Panel)
+Real-time plots:
+During simulation, show selected plots such as:
+Total aircraft on ground vs time.
+Queue length at key hold points vs time.
+Runway throughput vs time.
+Update these periodically (e.g. every N steps) to avoid performance issues.
+Post-run results:
+After the simulation finishes, allow the user to:
+Inspect all recorded plots (time-series, histograms etc.).
+Save plots as images (PNG) and optionally download underlying CSV data.
+Technical link:
+The backend will return plot-ready data (x- and y-series, labels, units) from metrics.py; the UI is only responsible for drawing the charts and handling export operations.
+Module
+Specification in Detail:
+LAYOUT.PY – Airport Graph Representation
+To do:
+Represent the airport as a graph and handle JSON I/O for layouts. Define node types (intersection, runway end, runway entry, runway exit, gate, hold points, apron
+centre
+) and edge types (runway, taxiway, apron link). Each edge stores its start/end node, 1D polyline, length, allowed flows (arrival/departure/both), flags (rapid exit, one
+way), and optional speed/capacity hints. Provide functions to load/save layouts from/to JSON and to query nodes/edges efficiently.
+Path Builder UI saves layouts using
+Layout.to_json
+() and loads with
+Layout.from_json
+().
+PARAMS.PY – Hyperparameter System
+To do:
+Implement a central hyperparameter system where each parameter (e.g. spawn rates, speed multipliers, separation distances, weather, wind, priority modes, simulation duration) has a mode (off, fixed, random, realistic) and associated values. Provide helper functions that, given time and context (edge, aircraft class, weather), return evaluated values such as current spawn rate, weather state, wind vector, speed limit and required separation. This module should also support mid
+run updates from the UI (e.g. changing a slider) without changing backend code.
+UI parameter controls save/load presets using parameter JSON I/O; mid-run slider changes call
+apply_midrun_update
+().
+RULES.PY – Local and Global Rules
+To do:
+Encode all rule logic that interprets layout and parameters into constraints for movement:
+Access rules: whether an arrival/departure and a given aircraft size can use a specific edge.
+Speed rules: compute allowed speed on an edge based on section type (runway/taxiway/apron), aircraft class and weather.
+Separation rules: compute required separation distances in different areas (runway, taxiway, apron) and adjust by weather.
+Priority rules: decide ordering at intersections and holds (e.g. FIFO, departure
+first, arrival
+first, weighted
+, aircraft size priority: LARGE &gt; MEDIUM &gt; SMALL
+).
+Hold
+release rules: decide when an aircraft at a hold point can enter the runway or a constrained area.
+This module should not move aircraft itself; it only answers “may/should we?” questions for other modules and the core model.
+SPAWNING.PY – Arrival and Departure Generation
+To do:
+Use the hyperparameters to decide when and where new aircraft appear:
+For departures: at eligible gates, use per
+gate or global spawn rates and size
+class probabilities, checking gate availability before creating a new aircraft.
+For arrivals: at active runway ends (based on wind and runway configuration), use spawn rates and size
+class probabilities to inject landing aircraft.
+This module assigns each new aircraft an initial route (via the routing module), tags (arrival/departure, size) and initial state, and inserts them into the global simulation state.
+ROUTING.PY – Route Assignment and Rerouting
+To do:
+Handle all pathfinding and rerouting over the layout graph:
+Precompute or compute on demand shortest paths between key origin–destination pairs (gates ↔ runway entries/exits), constrained by edge direction, allowed flows and size restrictions.
+For each new aircraft, choose an appropriate route from origin to destination (gate to runway for departures, runway exit to gate for arrivals).
+Support rerouting at nodes: when congestion, closures, or runway configuration changes make the current route undesirable or invalid, search for alternative forward routes from the aircraft’s current node that respect “no reverse / no U
+turn” constraints.
+Interpret runway configuration (from wind and parameters) to determine which runway directions and rapid exits are available for routing at a given time.
+This module only deals with graph
+level routing decisions, not the detailed movement along edges.
+CAPACITY.PY – Queues and Resource Management
+To do:
+Manage capacities and queues for limited resources:
+Gates: track which gate is occupied by which aircraft, decide if an arrival can be assigned a gate, and whether a departure can spawn at a gate.
+Hold points: maintain queues of aircraft waiting before entering runways or other constrained zones, and decide (using rules) when to release the next aircraft.
+Runways: track whether a runway is occupied by an arrival or departure and whether it is available for the next operation, respecting capacity (usually one at a time) and separation in time/space.
+Optionally, maintain high
+level occupancy information for busy taxiway segments.
+This module exposes simple operations like “add aircraft to queue”, “can we release?”, “assign gate”, “is runway available?”, which are then used by the runner and the core model.
+MODEL_CORE.PY – Cellular Automaton and Movement (Research Partner)
+To do (research partner):
+Define the microscopic state and the one
+step update rule of the simulation:
+State contents: list of aircraft (with edge, position, speed, size, route index, status), edge/cell occupancies, and any aggregated counters needed.
+Initialisation: build an empty or initial state from the layout and parameters.
+Step function: given the current state, layout, parameters, rules and capacity information, advance the system by one time step, enforcing movement, acceleration, braking, separation, and conflict resolution, while respecting capacity and queue decisions. Produce observables (e.g. densities, flows, queue lengths) needed by the metrics module.
+This is where the statistical
+physics / CA modelling lives; other modules treat it as a black box with a well
+defined interface.
+The research partner I’m working with will do this part
+METRICS.PY – Logging and Plot Data
+To do:
+Provide a simple mechanism to record data during runs and prepare results for plots and analysis:
+Maintain time series (e.g. total aircraft on ground, queue lengths at holds, runway throughput, edge occupancies).
+Collect per
+aircraft statistics such as taxi times and waiting times.
+After a run, aggregate logs into summary statistics and a small set of generic plot descriptors (e.g. line plots and histograms with x, y, labels), so the UI can render them without knowing physics details.
+Provide functions to export all result data in JSON/CSV form for external analysis.
+The exact set of metrics can start minimal (e.g. total aircraft vs time, queue length vs time) and be extended later in collaboration with the research partner.
+Returns plot data as simple JSON ({"plots": [{"type": "line", "x": [...], "y": [...]}]}) for UI rendering.
+RUNNER.PY – Main Simulation Orchestrator
+To do:
+Act as the main entry point for running simulations:
+Load layout JSON and parameter JSON.
+Call routing to precompute routes if needed.
+Initiali
+s
+e
+state via the core model.
+For each time step:
+Evaluate environment (weather, wind, runway configuration) from parameters.
+Call spawning to add any new arrivals/departures.
+Update capacity state (gates, holds, runway).
+Call the core model’s step function to advance movement and produce observables.
+Log data via the metrics module.
+Optionally accept parameter updates from the UI mid
+run.
+At the end, call metrics to build a results object (including plot data and summary stats) and return it to the UI or caller.
+Runner should be written so that it can support both single runs and batch runs over multiple scenarios.
+UI calls run_simulation(layout_json, params_json) as the single entry point and receives
+results.json
+.
+All Hyperparameters (Exhaustive List):
+Category
+Parameter
+Type
+Mode
+Example Value
+Description
+Traffic
+departure_spawn_rate
+float
+fixed/random/realistic
+0.5
+aircraft/minute at gates
+arrival_spawn_rate
+float
+fixed/random/realistic
+0.3
+aircraft/minute at runway ends
+departure_class_mix
+dict
+fixed
+{small: 0.2, medium: 0.5, large: 0.3}
+probability distribution
+arrival_class_mix
+dict
+fixed
+{small: 0.3, medium: 0.4, large: 0.3}
+probability distribution
+traffic_mode
+enum
+fixed
+"mixed"
+departures_only
+/
+arrivals_only
+/ mixed
+Environment
+weather_condition
+enum
+fixed/random/realistic
+"good"
+good / mild / bad
+wind_speed
+float
+fixed/random/realistic
+0 (m/s)
+0–25 m/s range
+wind_direction
+float
+fixed/random/realistic
+180 (degrees)
+0–360 degrees
+Movement
+speed_base_small
+float
+fixed
+5 (m/s)
+small aircraft nominal speed
+speed_base_medium
+float
+fixed
+6 (m/s)
+medium aircraft nominal speed
+speed_base_large
+float
+fixed
+4 (m/s)
+large aircraft nominal speed
+speed_mult_runway
+float
+fixed
+1.0
+multiplier on runway
+speed_mult_taxiway
+float
+fixed
+0.8
+multiplier on taxiway
+speed_mult_apron
+float
+fixed
+0.5
+multiplier in apron
+speed_mult_good
+float
+fixed
+1.0
+good weather multiplier
+speed_mult_mild
+float
+fixed
+0.9
+mild weather multiplier
+speed_mult_bad
+float
+fixed
+0.7
+bad weather multiplier
+Separation
+separation_runway
+float
+fixed
+100 (m)
+on runway
+separation_taxiway
+float
+fixed
+50 (m)
+on taxiway
+separation_apron
+float
+fixed
+30 (m)
+in apron
+sep_mult_good
+float
+fixed
+1.0
+good weather
+sep_mult_mild
+float
+fixed
+1.2
+mild weather (relax)
+sep_mult_bad
+float
+fixed
+1.5
+bad weather (tighten)
+Priority
+runway_priority_mode
+enum
+fixed
+"
+fifo
+"
+fifo
+/
+depart_first
+/
+arrive_first
+/ weighted
+/
+large&gt;medium/small
+intersection_priority_mode
+enum
+fixed
+"
+fifo
+"
+fifo
+/ random / weighted
+/ large&gt;medium/small
+hold_release_priority
+enum
+fixed
+"
+fifo
+"
+how to order releases from hold
+Capacity
+gate_capacity_apron_A
+int
+fixed
+10
+number of gates in apron A
+gate_capacity_apron_B
+int
+fixed
+8
+number of gates in apron B
+runway_capacity
+int
+fixed
+1
+Strictly 1 aircraft at a time on runway
+Simulation
+time_step_size
+float
+fixed
+1.0 (seconds)
+CA time step
+total_duration
+float
+fixed
+3600 (seconds)
+simulation length (1 hour)
+random_seed
+int
+fixed
+42
+for reproducibility
+All Rules &amp; Logic:
+Access Rules
+Arrivals may use arrival-only edges, both edges, and rapid-exit taxiways.
+Departures may use departure-only edges and both edges, but not rapid exits.
+Aircraft must respect service classes (small/medium/large) for gates and taxiways
+.
+Speed Rules
+Speed =
+base_speed
+[class] ×
+section_multiplier
+×
+weather_multiplier
+.
+Speed varies by edge type (runway faster than taxiway, apron slowest).
+Weather affects speed via a global multiplier (bad weather = slower).
+Separation Rules
+Minimum following distance on runway: N/A - only 1 aircraft allowed on runway at any time.
+Minimum following distance on taxiway:
+separation_taxiway
+.
+Minimum spacing in apron:
+separation_apron
+.
+Separation scales with weather (bad weather = larger required spacing).
+Runway capacity enforced by capacity.py (never more than 1 aircraft); separation handled in step function for taxiways/aprons only.
+Priority at Nodes
+FIFO: first-come-first-served.
+Depart-first: departures get priority over arrivals at intersections.
+Arrive-first: arrivals get priority (to clear the runway quickly).
+Weighted: custom scoring function (for future extensions).
+Hold Point Release
+Release an aircraft from a hold only if the next edge is free AND the runway is completely clear of all aircraft.
+Release only if the runway is available for the intended operation (no aircraft on entire runway).
+Apply the configured priority rule (FIFO, depart-first, arrive-first, etc.).
+Queue length at each hold point is tracked for metrics.
+Runway Sequencing (Mixed Mode)
+Strict rule: only 1 aircraft on runway at any time (landing OR
+takeoff
+).
+Decide at each opportunity whether the next operation is a landing or a
+takeoff
+only if runway is fully clear.
+Follow
+runway_priority_mode
+to choose between arrival and departure queues.
+No separation needed between consecutive operations – capacity.py ensures runway clears completely before next release.
+Keep runway occupancy state updated (which runway, which aircraft, which direction).
+Gate Assignment
+Assign arriving aircraft only to free gates that accept their size class/apron.
+If no gate is free, the arriving aircraft waits in an apron or designated holding area.
+Departing aircraft may spawn only at free gates.
+Rerouting
+At each node, check the remaining route for blockages or heavy congestion.
+If the route ahead is blocked and alternative forward paths exist, choose a new route.
+Aircraft never reverse or backtrack; rerouting respects forward-only movement.
+New routes are found with shortest-path search on a reduced graph that avoids closed or overfull edges.
+Weather Effects
+Weather influences speed through a global multiplier.
+Weather influences separation distances through another multiplier.
+Weather and wind direction together determine which runway directions are active.
+In very bad weather, some operations may be disabled entirely based on parameters.
+Runway Configuration (Wind-Dependent)
+Compute active runway direction(s) from wind direction (e.g. use upwind runway end).
+Configure which directions are used for departures and which for arrivals, possibly on the same runway.
+If runway direction changes during the simulation, aircraft may need to reroute or queue until a compatible route is available.
+Wha
+t can be done now vs Input from research partner
+:
+We can implement
+:
+layout.py – All graph I/O and representation (used by Path Builder UI).
+params.py – Complete hyperparameter system and mode evaluation (used by UI parameter controls).
+rules.py – Access rules, speed/separation calculations (taxiways/aprons only), priority logic.
+spawning.py – Spawn arrival/departure aircraft based on rates &amp; classes.
+v. routing.py – Path finding, route assignment, rerouting (all graph-based).
+capacity.py – Gate management, hold queues, runway capacity tracking (strictly 1 aircraft).
+runner.py – Main orchestration loop (JSON API entry point for UI).
+metrics.py – Logging scaffold and plot data aggregation (JSON for UI graphs).
+UI components: Home screen, Path Builder, Simulation visuals, Graphs/Results panel.
+What we need from research partner:
+model_core.py – State definition and step function:
+Define State data structure (aircraft positions, edge occupancies, etc.).
+Implement step(state, layout, params, rules, capacity) -&gt; (state, observables).
+This is where the cellular automaton lives: movement, acceleration, braking, collision avoidance, separation enforcement.
+Cellular automaton movement rules for taxiways/aprons only (runway handled by capacity.py).
+Fine-tuning
+taxiway/apron
+movement rules:
+Aircraft acceleration/deceleration rates.
+Collision avoidance and separation enforcement (taxiways/aprons).
+Stochastic noise injection for realistic movement.
+Observables definition:
+What metrics step() computes each cycle (edge densities, flows).
+How edge densities/flows are calculated for taxiways/aprons.
+Statistical-physics specific metrics (optional):
+Phase transition measurements.
+Fundamental diagrams (flow vs. density).
+Queueing statistics.
+What we can
+independently implement
+(no research partner input needed)
+:
+. Queueing discipline between hold points (FIFO, priority-based).
+ii. Runway capacity management (strictly 1 aircraft; who gets runway next?).
+iii. Gate occupancy tracking and assignment.
+iv. Rerouting logic (avoiding congestion, no reverse/backtrack).
+v. Priority at intersections (who yields to whom?).
+vi. Speed and separation enforcement for taxiways/aprons (parameters-driven).
+vii. Runway occupancy tracking (clear/occupied state only).
+viii. Parametric control of all the above (modes: off/fixed/random/realistic).
+ix. UI data flow (
+layout.json
+→
+params.json
+→ runner →
+results.json
+→ graphs).

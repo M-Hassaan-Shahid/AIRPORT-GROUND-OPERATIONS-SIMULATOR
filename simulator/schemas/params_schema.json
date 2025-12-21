@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Simulation Parameters Schema",
+  "type": "object",
+  "properties": {
+    "traffic": {
+      "type": "object",
+      "properties": {
+        "departure_spawn_rate": { "$ref": "#/definitions/parameter" },
+        "arrival_spawn_rate": { "$ref": "#/definitions/parameter" },
+        "departure_class_mix": { "$ref": "#/definitions/distribution" },
+        "arrival_class_mix": { "$ref": "#/definitions/distribution" },
+        "traffic_mode": { "type": "string", "enum": ["mixed", "departures_only", "arrivals_only"] }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "properties": {
+        "weather_condition": { "$ref": "#/definitions/parameter" },
+        "wind_speed": { "$ref": "#/definitions/parameter" },
+        "wind_direction": { "$ref": "#/definitions/parameter" }
+      }
+    },
+    "movement": {
+      "type": "object",
+      "properties": {
+        "speed_base": { "$ref": "#/definitions/distribution" },
+        "speed_mult_section": { "$ref": "#/definitions/distribution" },
+        "speed_mult_weather": { "$ref": "#/definitions/distribution" }
+      }
+    },
+    "separation": {
+      "type": "object",
+      "properties": {
+        "runway": { "type": "number" },
+        "taxiway": { "type": "number" },
+        "apron": { "type": "number" },
+        "weather_mult": { "$ref": "#/definitions/distribution" }
+      }
+    },
+    "priority": {
+      "type": "object",
+      "properties": {
+        "runway": { "type": "string" },
+        "intersection": { "type": "string" },
+        "hold_release": { "type": "string" }
+      }
+    },
+    "capacity": {
+      "type": "object",
+      "properties": {
+        "gates": { "type": "object", "additionalProperties": { "type": "integer" } },
+        "runway": { "type": "integer" }
+      }
+    },
+    "simulation": {
+      "type": "object",
+      "properties": {
+        "time_step_size": { "type": "number" },
+        "total_duration": { "type": "number" },
+        "random_seed": { "type": "integer" }
+      }
+    }
+  },
+  "definitions": {
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string", "enum": ["off", "fixed", "random", "realistic"] },
+        "value": {},
+        "min_val": { "type": "number" },
+        "max_val": { "type": "number" },
+        "choices": { "type": "array" }
+      },
+      "required": ["mode"]
+    },
+    "distribution": {
+      "type": "object",
+      "additionalProperties": { "type": "number" }
+    }
+  }
+}

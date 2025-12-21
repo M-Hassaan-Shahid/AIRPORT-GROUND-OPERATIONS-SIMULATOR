@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Airport Layout Schema",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "nodes": {
+      "type": "object",
+      "patternProperties": {
+        "^.*$": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "intersection",
+                "runway_end",
+                "runway_entry",
+                "runway_exit",
+                "gate",
+                "hold_point",
+                "apron_center"
+              ]
+            },
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "name": {
+              "type": "string"
+            },
+            "apron": {
+              "type": ["string", "null"]
+            },
+            "size_class": {
+              "type": ["string", "null"],
+              "enum": ["small", "medium", "large", null]
+            }
+          },
+          "required": ["type", "x", "y"]
+        }
+      }
+    },
+    "edges": {
+      "type": "object",
+      "patternProperties": {
+        "^.*$": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "runway",
+                "taxiway",
+                "apron_link",
+                "rapid_exit"
+              ]
+            },
+            "start": {
+              "type": "string"
+            },
+            "end": {
+              "type": "string"
+            },
+            "length": {
+              "type": "number"
+            },
+            "allowed_flow": {
+              "type": "string",
+              "enum": ["arrival", "departure", "both"]
+            },
+            "one_way": {
+              "type": "boolean"
+            },
+            "speed_hint": {
+              "type": ["number", "null"]
+            },
+            "capacity_hint": {
+              "type": ["integer", "null"]
+            },
+            "polyline": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 2,
+                "maxItems": 2
+              }
+            }
+          },
+          "required": ["type", "start", "end", "length"]
+        }
+      }
+    }
+  },
+  "required": ["nodes", "edges"]
+}

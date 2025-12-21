@@ -1,0 +1,39 @@
+{
+  "traffic": {
+    "departure_spawn_rate": { "mode": "fixed", "value": 2.0 },
+    "arrival_spawn_rate": { "mode": "fixed", "value": 2.0 },
+    "departure_class_mix": { "small": 0.3, "medium": 0.5, "large": 0.2 },
+    "arrival_class_mix": { "small": 0.3, "medium": 0.5, "large": 0.2 },
+    "traffic_mode": "mixed"
+  },
+  "environment": {
+    "weather_condition": { "mode": "fixed", "value": "good" },
+    "wind_speed": { "mode": "fixed", "value": 5.0 },
+    "wind_direction": { "mode": "fixed", "value": 270.0 }
+  },
+  "movement": {
+    "speed_base": { "small": 10.0, "medium": 12.0, "large": 8.0 },
+    "speed_mult_section": { "runway": 5.0, "taxiway": 1.0, "apron": 0.5 },
+    "speed_mult_weather": { "good": 1.0, "mild": 0.9, "bad": 0.7 }
+  },
+  "separation": {
+    "runway": 200.0,
+    "taxiway": 50.0,
+    "apron": 30.0,
+    "weather_mult": { "good": 1.0, "mild": 1.2, "bad": 1.5 }
+  },
+  "priority": {
+    "runway": "fifo",
+    "intersection": "fifo",
+    "hold_release": "fifo"
+  },
+  "capacity": {
+    "gates": { "Apron A": 10 },
+    "runway": 1
+  },
+  "simulation": {
+    "time_step_size": 1.0,
+    "total_duration": 3600.0,
+    "random_seed": 42
+  }
+}
