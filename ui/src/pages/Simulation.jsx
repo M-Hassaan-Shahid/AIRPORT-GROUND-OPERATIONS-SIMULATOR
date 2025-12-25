@@ -143,21 +143,31 @@ function formatTime(seconds) {
 }
 
 function ParamSlider({ param, value, onChange }) {
+  // Calculate fill percentage for the track
+  const fillPercent = ((value - param.min) / (param.max - param.min)) * 100;
+  
   return (
     <div className="param-control">
       <div className="param-header">
         <label className="param-label">{param.label}</label>
         <span className="param-value">{value}{param.unit || ''}</span>
       </div>
-      <input
-        type="range"
-        className="slider"
-        min={param.min}
-        max={param.max}
-        step={param.step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
+      <div className="slider-container">
+        <span className="slider-limit slider-limit-min">{param.min}</span>
+        <div className="slider-track-wrapper">
+          <input
+            type="range"
+            className="slider"
+            min={param.min}
+            max={param.max}
+            step={param.step}
+            value={value}
+            onChange={(e) => onChange(Number(e.target.value))}
+            style={{ '--fill-percent': `${fillPercent}%` }}
+          />
+        </div>
+        <span className="slider-limit slider-limit-max">{param.max}</span>
+      </div>
     </div>
   );
 }
