@@ -381,6 +381,10 @@ class CapacityState:
             return self.edges[edge_id].is_full()
         return False
     
+    def is_edge_full(self, edge_id: str) -> bool:
+        """Alias for is_edge_congested."""
+        return self.is_edge_congested(edge_id)
+    
     def get_edge_occupancy(self, edge_id: str) -> int:
         """Get number of aircraft on an edge."""
         if edge_id in self.edges:

@@ -36,6 +36,14 @@ def run_simulation(layout_json: str, params_json: str) -> str:
         layout = Layout.from_json(layout_json)
         params = SimulationParams.from_json(params_json)
         
+        # Validate layout
+        errors = layout.validate()
+        if errors:
+            return json.dumps({
+                "error": "Layout validation failed",
+                "details": errors
+            }, indent=2)
+        
         # 2. Initialize subsystems
         capacity_state = capacity.CapacityState()
         capacity_state.initialize_from_layout(layout, params)
@@ -44,6 +52,8 @@ def run_simulation(layout_json: str, params_json: str) -> str:
         router.precompute_routes()
         
         metrics_collector = metrics.MetricsCollector()
+        metrics_collector.sim_duration = params.total_duration
+        metrics_collector.start_time = 0
         
         # 3. Initialize Core State
         state = model_core.init_state(layout, params)
@@ -56,7 +66,7 @@ def run_simulation(layout_json: str, params_json: str) -> str:
             current_time = state.time
             
             # A. Update Environment (Wind/Weather)
-            # (In a specialized module or params)
+            # Weather effects are handled in params.get_speed_limit etc.
             
             # B. Spawn Traffic
             new_departures = spawning.spawn_departures(
@@ -64,26 +74,29 @@ def run_simulation(layout_json: str, params_json: str) -> str:
             )
             state.aircraft.extend(new_departures)
             
+            # Add initial edge occupancy for new departures
+            for ac in new_departures:
+                if ac.route and ac.route.edges:
+                    capacity_state.add_to_edge(ac.id, ac.route.edges[0])
+            
             new_arrivals = spawning.spawn_arrivals(
                 layout, params, capacity_state, router, current_time, dt
             )
             state.aircraft.extend(new_arrivals)
             
-            # C. Step Model Core (Movement)
+            # Add initial edge occupancy for new arrivals
+            for ac in new_arrivals:
+                if ac.route and ac.route.edges:
+                    capacity_state.add_to_edge(ac.id, ac.route.edges[0])
+            
+            # C. Step Model Core (Movement with NaSch CA rules)
             state, observables = model_core.step(
                 state, layout, params, capacity_state, dt
             )
             
-            # D. Collect Metrics
+            # D. Collect Metrics (completed aircraft handled in observables)
             metrics_collector.record(current_time, observables)
-            
-            # E. Check for completed flights (cleanup)
-            # This is partly handled in model_core.step/finish_aircraft
-            # We can sync metrics here if needed
-            for ac in state.aircraft:
-                if ac.completion_time == current_time: # Just finished
-                    metrics_collector.record_flight_completion(ac)
-            
+        
         # 5. Build Results
         return metrics_collector.to_json()
         

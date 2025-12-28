@@ -258,21 +258,21 @@ def get_active_runway_direction(wind_direction: float) -> str:
         wind_direction: Wind direction in degrees (0-360, where wind is coming FROM)
     
     Returns:
-        "east" or "west" based on typical runway (21-03 in sample)
+        Runway identifier (e.g., "09" or "27") based on wind direction
     """
-    # For a runway oriented roughly east-west (03-21):
-    # Wind from west (270°) → use 21 (land/takeoff heading east)
-    # Wind from east (90°) → use 03 (land/takeoff heading west)
+    # For a runway oriented roughly east-west (09-27):
+    # Wind from west (270°) → use 27 (land/takeoff heading east toward 270°)
+    # Wind from east (90°) → use 09 (land/takeoff heading west toward 090°)
     
     # Normalize to 0-360
     wind_direction = wind_direction % 360
     
-    # If wind is from west-ish (180-360), aircraft go east
-    # If wind is from east-ish (0-180), aircraft go west
+    # If wind is from west-ish (180-360), aircraft takeoff/land heading east
+    # If wind is from east-ish (0-180), aircraft takeoff/land heading west
     if 180 <= wind_direction < 360:
-        return "21"  # Use runway 21 (heading ~210°)
+        return "27"  # Use runway 27 (heading ~270°)
     else:
-        return "03"  # Use runway 03 (heading ~30°)
+        return "09"  # Use runway 09 (heading ~90°)
 
 
 def compute_runway_heading(runway_number: str) -> float:
