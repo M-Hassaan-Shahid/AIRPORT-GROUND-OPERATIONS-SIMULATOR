@@ -1,0 +1,47 @@
+{
+  "name": "Sample International Airport",
+  "version": "1.0",
+  "nodes": {
+    "n_rwy_09": { "type": "runway_end", "x": 0, "y": 100, "name": "09 Start" },
+    "n_rwy_27": { "type": "runway_end", "x": 3000, "y": 100, "name": "27 Start" },
+    "n_exit_1": { "type": "runway_exit", "x": 1000, "y": 100, "name": "Rapid Exit A" },
+    "n_exit_2": { "type": "runway_exit", "x": 2000, "y": 100, "name": "Rapid Exit B" },
+    
+    "n_twy_start": { "type": "intersection", "x": 0, "y": 200, "name": "Twy Start" },
+    "n_twy_mid1": { "type": "intersection", "x": 1000, "y": 200, "name": "Twy Mid 1" },
+    "n_twy_mid2": { "type": "intersection", "x": 2000, "y": 200, "name": "Twy Mid 2" },
+    "n_twy_end": { "type": "intersection", "x": 3000, "y": 200, "name": "Twy End" },
+    
+    "n_hold_1": { "type": "hold_point", "x": 0, "y": 150, "name": "Hold 09" },
+    "n_hold_2": { "type": "hold_point", "x": 3000, "y": 150, "name": "Hold 27" },
+    
+    "n_gate_1": { "type": "gate", "x": 500, "y": 300, "name": "Gate 1", "apron": "Apron A", "size_class": "large" },
+    "n_gate_2": { "type": "gate", "x": 1000, "y": 300, "name": "Gate 2", "apron": "Apron A", "size_class": "medium" },
+    "n_gate_3": { "type": "gate", "x": 1500, "y": 300, "name": "Gate 3", "apron": "Apron A", "size_class": "medium" },
+    
+    "n_apron_entry": { "type": "intersection", "x": 1000, "y": 250, "name": "Apron Entry" }
+  },
+  "edges": {
+    "e_rwy_1": { "type": "runway", "start": "n_rwy_09", "end": "n_exit_1", "length": 1000, "allowed_flow": "both" },
+    "e_rwy_2": { "type": "runway", "start": "n_exit_1", "end": "n_exit_2", "length": 1000, "allowed_flow": "both" },
+    "e_rwy_3": { "type": "runway", "start": "n_exit_2", "end": "n_rwy_27", "length": 1000, "allowed_flow": "both" },
+    
+    "e_exit_1": { "type": "rapid_exit", "start": "n_exit_1", "end": "n_twy_mid1", "length": 150, "one_way": true, "allowed_flow": "arrival" },
+    "e_exit_2": { "type": "rapid_exit", "start": "n_exit_2", "end": "n_twy_mid2", "length": 150, "one_way": true, "allowed_flow": "arrival" },
+    
+    "e_twy_1": { "type": "taxiway", "start": "n_twy_start", "end": "n_twy_mid1", "length": 1000 },
+    "e_twy_2": { "type": "taxiway", "start": "n_twy_mid1", "end": "n_twy_mid2", "length": 1000 },
+    "e_twy_3": { "type": "taxiway", "start": "n_twy_mid2", "end": "n_twy_end", "length": 1000 },
+    
+    "e_entry_09": { "type": "taxiway", "start": "n_twy_start", "end": "n_hold_1", "length": 50, "one_way": true },
+    "e_hold_09": { "type": "taxiway", "start": "n_hold_1", "end": "n_rwy_09", "length": 50, "one_way": true },
+    
+    "e_entry_27": { "type": "taxiway", "start": "n_twy_end", "end": "n_hold_2", "length": 50, "one_way": true },
+    "e_hold_27": { "type": "taxiway", "start": "n_hold_2", "end": "n_rwy_27", "length": 50, "one_way": true },
+    
+    "e_apron_link": { "type": "taxiway", "start": "n_twy_mid1", "end": "n_apron_entry", "length": 50 },
+    "e_gate_1": { "type": "apron_link", "start": "n_apron_entry", "end": "n_gate_1", "length": 100 },
+    "e_gate_2": { "type": "apron_link", "start": "n_apron_entry", "end": "n_gate_2", "length": 100 },
+    "e_gate_3": { "type": "apron_link", "start": "n_apron_entry", "end": "n_gate_3", "length": 100 }
+  }
+}
